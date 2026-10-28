@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirigiendo a Google Maps...</title>
+  <script>
+    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyqVQWxwf_ulEvqzajl2C8mu1ius7MGoQe-lQMTJmgH5EfLOhBr3m9IxecBzHAqqW222_C-XT4AXLo/pub?gid=0&single=true&output=csv";
+    const params = new URLSearchParams(window.location.search);
+    const idCartel = params.get("id") || "1";
+
+    fetch(SHEET_CSV_URL + "&t=" + Date.now(), { cache: "no-store" })
+      .then(res => res.text())
+      .then(csv => {
+        const filas = csv.split(/\r?\n/);
+        for (let i = 0; i < filas.length; i++) {
+          const cols = filas[i].split(",");
+          if (cols[0] && cols[0].trim() === idCartel && cols[1]) {
+            let destino = cols[1].trim().replace(/^"|"$/g, '');
+            if (destino && !destino.startsWith("http")) {
+              destino = "https://" + destino;
+            }
+            window.location.replace(destino);
+            return;
+          }
+        }
+      });
+  </script>
+</head>
+<body style="font-family:sans-serif; display:flex; height:90vh; align-items:center; justify-content:center; color:#444;">
+  Abriendo reseñas de Google...
+</body>
+</html>
