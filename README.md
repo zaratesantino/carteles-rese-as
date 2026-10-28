@@ -1,1 +1,1 @@
-# carteles-rese-as
+# carteles-resenas
