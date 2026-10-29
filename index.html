@@ -5,36 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Redirigiendo a Google Maps...</title>
   <script>
-    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyqVQWxwf_ulEvqzajl2C8mu1ius7MGoQe-lQMTJmgH5EfLOhBr3m9IxecBzHAqqW222_C-XT4AXLo/pub?gid=0&single=true&output=csv";
-    
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyqVQWxwf_ulEvqzajl2C8mu1ius7MGoQe-lQMTJmgH5EfLOhBr3m9IxecBzHAqqW222_C-XT4AXLo/pub?gid=0&single=true&output=csv";
     const params = new URLSearchParams(window.location.search);
     const idBuscado = (params.get("id") || "1").trim();
 
-    fetch(SHEET_CSV_URL, { cache: "no-store" })
-      .then(res => res.text())
-      .then(csv => {
-        const filas = csv.split(/\r?\n/);
-        for (let i = 0; i < filas.length; i++) {
-          // Soporta separación por coma (,) o punto y coma (;)
-          const cols = filas[i].split(/[,;]/);
-          if (cols.length >= 2) {
-            const idFila = cols[0].replace(/^"|"$/g, '').trim();
-            // Acepta que pongas "1" o "ID-001" en la columna A del Excel
-            if (idFila === idBuscado || idFila === "ID-" + idBuscado.padStart(3, '0')) {
-              let destino = cols[1].replace(/^"|"$/g, '').trim();
-              if (destino) {
-                if (!destino.startsWith("http")) destino = "https://" + destino;
-                window.location.replace(destino);
-                return;
-              }
+    // Extrae solo el link limpio aunque la celda tenga corchetes o "| Disponible"
+    function extraerUrlLimpia(texto) {
+      if (!texto) return null;
+      const matchHttp = texto.match(/https?:\/\/[^\s\]\)">|]+/i);
+      if (matchHttp) return matchHttp[0];
+      let limpio = texto.split("|")[0].replace(/[\[\]\(\)"]/g, "").trim();
+      if (limpio && limpio.includes(".")) return "https://" + limpio;
+      return null;
+    }
+
+    function procesarCSV(csvText) {
+      const filas = csvText.split(/\r?\n/);
+      for (let i = 0; i < filas.length; i++) {
+        const cols = filas[i].split(/[,;]/);
+        if (cols.length >= 2) {
+          const idFila = cols[0].replace(/^"|"$/g, '').trim();
+          if (idFila === idBuscado || idFila === "ID-" + idBuscado.padStart(3, '0')) {
+            const urlFinal = extraerUrlLimpia(filas[i].substring(cols[0].length + 1));
+            if (urlFinal) {
+              window.location.replace(urlFinal);
+              return true;
             }
           }
         }
-        document.getElementById("msg").innerText = "ID " + idBuscado + " no encontrado en la Columna A del Excel.";
-      })
-      .catch(err => {
-        document.getElementById("msg").innerText = "Error al leer el Excel.";
-      });
+      }
+      document.getElementById("msg").innerText = "ID " + idBuscado + " no encontrado en el Excel.";
+      return false;
+    }
+
+    async function iniciarRedireccion() {
+      // Intento 1: Directo; Intento 2 y 3: Proxies anti-bloqueo CORS por si el navegador bloquea a Google
+      const rutas = [
+        CSV_URL,
+        "https://corsproxy.io/?" + encodeURIComponent(CSV_URL),
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(CSV_URL)
+      ];
+
+      for (let ruta of rutas) {
+        try {
+          const res = await fetch(ruta, { cache: "no-store" });
+          if (res.ok) {
+            const texto = await res.text();
+            if (texto && !texto.trim().startsWith("<!DOCTYPE")) {
+              procesarCSV(texto);
+              return;
+            }
+          }
+        } catch (e) {
+          // Si falla una ruta, salta automáticamente a la siguiente en milisegundos
+        }
+      }
+      document.getElementById("msg").innerText = "No se pudo leer el Excel. Verificá que siga publicado en Archivo > Compartir > Publicar en la web.";
+    }
+
+    iniciarRedireccion();
   </script>
 </head>
 <body style="font-family:sans-serif; display:flex; height:90vh; align-items:center; justify-content:center; color:#444; text-align:center; padding:20px;">
