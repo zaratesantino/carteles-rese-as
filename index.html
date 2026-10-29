@@ -5,29 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Redirigiendo a Google Maps...</title>
   <script>
-    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQyqVQWxwf_ulEvqzajl2C8mu1ius7MGoQe-lQMTJmgH5EfLOhBr3m9IxecBzHAqqW222_C-XT4AXLo/pub?gid=0&single=true&output=csv";
+    // Tu base de datos interna rápida (ID del cartel : Link directo de Google Maps del local)
+    const enlacesLocales = {
+      "1": "https://maps.app.goo.gl/TU_LINK_LOCAL_1",
+      "2": "https://maps.app.goo.gl/TU_LINK_LOCAL_2",
+      "3": "https://maps.app.goo.gl/TU_LINK_LOCAL_3",
+      "4": "https://maps.app.goo.gl/TU_LINK_LOCAL_4",
+      "5": "https://maps.app.goo.gl/TU_LINK_LOCAL_5",
+      "6": "https://maps.app.goo.gl/TU_LINK_LOCAL_6",
+      "7": "https://maps.app.goo.gl/TU_LINK_LOCAL_7",
+      "8": "https://maps.app.goo.gl/TU_LINK_LOCAL_8",
+      "9": "https://maps.app.goo.gl/TU_LINK_LOCAL_9",
+      "10": "https://maps.app.goo.gl/TU_LINK_LOCAL_10"
+    };
+
     const params = new URLSearchParams(window.location.search);
     const idCartel = params.get("id") || "1";
 
-    fetch(SHEET_CSV_URL + "&t=" + Date.now(), { cache: "no-store" })
-      .then(res => res.text())
-      .then(csv => {
-        const filas = csv.split(/\r?\n/);
-        for (let i = 0; i < filas.length; i++) {
-          const cols = filas[i].split(",");
-          if (cols[0] && cols[0].trim() === idCartel && cols[1]) {
-            let destino = cols[1].trim().replace(/^"|"$/g, '');
-            if (destino && !destino.startsWith("http")) {
-              destino = "https://" + destino;
-            }
-            window.location.replace(destino);
-            return;
-          }
-        }
-      });
+    if (enlacesLocales[idCartel]) {
+      window.location.replace(enlacesLocales[idCartel]);
+    } else {
+      // Si el ID no existe, redirige a Google por defecto
+      window.location.replace("https://google.com");
+    }
   </script>
 </head>
-<body style="font-family:sans-serif; display:flex; height:90vh; align-items:center; justify-content:center; color:#444;">
+<body style="font-family:sans-serif; display:flex; height:90vh; align-items:center; justify-content:center; color:#555;">
   Abriendo reseñas de Google...
 </body>
 </html>
