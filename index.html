@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Google Maps · Reseñas</title>
-  <!-- Preconexión para acelerar la respuesta al máximo -->
   <link rel="preconnect" href="https://docs.google.com">
   <link rel="preconnect" href="https://corsproxy.io">
   <style>
@@ -18,6 +17,7 @@
       justify-content: center;
       height: 92vh;
       text-align: center;
+      padding: 20px;
     }
     .g-logo { font-size: 34px; font-weight: 700; letter-spacing: -1px; margin-bottom: 4px; }
     .g-b { color: #4285F4; } .g-r { color: #EA4335; } .g-y { color: #FBBC05; } .g-g { color: #34A853; }
@@ -39,12 +39,28 @@
     const params = new URLSearchParams(window.location.search);
     const idBuscado = (params.get("id") || "1").trim();
 
-    function extraerUrlLimpia(texto) {
-      if (!texto) return null;
-      const matchHttp = texto.match(/https?:\/\/[^\s\]\)">|]+/i);
+    function transformarEnUrlResena(celda) {
+      if (!celda) return null;
+      // Limpiamos comillas o espacios extras
+      let valor = celda.split("|")[0].replace(/[\[\]\(\)"]/g, "").trim();
+      if (!valor) return null;
+
+      // 1. Si pegaste el Place ID directo (ej: ChIJSw57_BiptZUR97VYXC0RZrY)
+      if (/^ChIJ[a-zA-Z0-9_-]+$/.test(valor)) {
+        return "https://search.google.com/local/writereview?placeid=" + valor;
+      }
+
+      // 2. Si adentro del texto hay un Place ID (ChIJ...)
+      const matchPlaceId = valor.match(/ChIJ[a-zA-Z0-9_-]+/);
+      if (matchPlaceId) {
+        return "https://search.google.com/local/writereview?placeid=" + matchPlaceId[0];
+      }
+
+      // 3. Si ya es una URL normal (http / https)
+      const matchHttp = valor.match(/https?:\/\/[^\s"<>]+/i);
       if (matchHttp) return matchHttp[0];
-      let limpio = texto.split("|")[0].replace(/[\[\]\(\)"]/g, "").trim();
-      if (limpio && limpio.includes(".")) return "https://" + limpio;
+
+      if (valor.includes(".")) return "https://" + valor;
       return null;
     }
 
@@ -56,7 +72,7 @@
         if (cols.length >= 2) {
           const idFila = cols[0].replace(/^"|"$/g, '').trim();
           if (idFila === idBuscado || idFila === "ID-" + idBuscado.padStart(3, '0')) {
-            const urlFinal = extraerUrlLimpia(filas[i].substring(cols[0].length + 1));
+            const urlFinal = transformarEnUrlResena(cols[1]);
             if (urlFinal) {
               window.location.replace(urlFinal);
               return true;
@@ -74,13 +90,12 @@
       buscarYRedirigir(text);
     }
 
-    // Dispara las consultas en paralelo: la primera que conteste redirige en el acto
     Promise.any([
-      obtenerRuta(CSV_URL),
+      obtenerRuta(CSV_URL + "&_t=" + Date.now()),
       obtenerRuta("https://corsproxy.io/?" + encodeURIComponent(CSV_URL)),
       obtenerRuta("https://api.allorigins.win/raw?url=" + encodeURIComponent(CSV_URL))
     ]).catch(() => {
-      document.getElementById("msg").innerText = "Abrí Google Maps para calificar este local.";
+      document.getElementById("msg").innerText = "Error: Revisá la fila " + idBuscado + " en tu Excel.";
     });
   </script>
 </head>
@@ -90,6 +105,6 @@
   </div>
   <div class="stars">★★★★★</div>
   <div class="spinner"></div>
-  <div class="status" id="msg">Abriendo ficha del local...</div>
+  <div class="status" id="msg">Abriendo ventana de reseña...</div>
 </body>
 </html>
